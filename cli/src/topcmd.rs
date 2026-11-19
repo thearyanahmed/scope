@@ -24,6 +24,13 @@ pub struct Args {
     /// Also write every event to FILE as JSON lines, for later --replay.
     #[arg(long, value_name = "FILE")]
     record: Option<PathBuf>,
+    /// Read metrics FIFOs too. Each flush goes to one reader, so only use this
+    /// when nothing else (an orchestrator) consumes them.
+    #[arg(long)]
+    own_metrics: bool,
+    /// Don't query firecracker API sockets for vcpu count, memory size and devices.
+    #[arg(long)]
+    no_api: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -58,6 +65,10 @@ pub fn run(root: Root, a: Args) -> anyhow::Result<()> {
             }
             hub.spawn(Box::new(host::Discovery::new(root.clone())));
             hub.spawn(Box::new(host::Sampler { root: root.clone(), interval: a.interval }));
+            hub.spawn(Box::new(metrics::Metrics { own_fifo: a.own_metrics, ..Default::default() }));
+            if !a.no_api {
+                hub.spawn(Box::new(api::Api::default()));
+            }
             if kvm::available(&root) {
                 hub.spawn(Box::new(kvm::Kvm { root: root.clone(), interval: a.interval }));
             } else {
