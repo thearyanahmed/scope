@@ -247,7 +247,13 @@ mod tests {
 
     fn entry(i: u64) -> Entry {
         Entry {
-            fault: FaultRecord { ts_ns: i * 10, offset: i * 4096, page_size: 4096, resolve_ns: 7, flags: fault_flags::WRITE },
+            fault: FaultRecord {
+                ts_ns: i * 10,
+                offset: i * 4096,
+                page_size: 4096,
+                resolve_ns: 7,
+                flags: fault_flags::WRITE,
+            },
             tid: 99,
         }
     }

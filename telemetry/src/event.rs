@@ -75,6 +75,8 @@ pub mod fault_flags {
     pub const WRITE: u16 = 1 << 0;
     pub const MINOR: u16 = 1 << 1;
     pub const PREFETCHED: u16 = 1 << 2;
+    /// served with zeros because the balloon removed the page after the snapshot.
+    pub const ZEROED: u16 = 1 << 3;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

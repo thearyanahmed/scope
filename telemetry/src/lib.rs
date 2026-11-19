@@ -8,9 +8,9 @@ mod event;
 mod privilege;
 mod sample;
 mod stop;
+pub mod trace;
 mod vm;
 mod vmset;
-pub mod trace;
 
 pub use event::*;
 pub use privilege::*;
