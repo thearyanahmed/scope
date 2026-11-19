@@ -15,6 +15,8 @@ check() { local what=$1; shift; if "$@"; then ok "$what"; else bad "$what"; fi; 
 cleanup() { "$LAB/stop.sh" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
+"$LAB/check-kvm.sh" || die "host cannot run firecracker"
+
 echo "== boot: 4 vms, 2 jailed"
 "$LAB/stop.sh" >/dev/null 2>&1 || true
 "$LAB/launch.sh" -n 4 -j 2 | tee "$OUT/vms.txt"

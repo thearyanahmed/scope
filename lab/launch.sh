@@ -11,6 +11,7 @@ while [ $# -gt 0 ]; do case $1 in
     --shared-ro) SHARED=1; shift;; *) die "unknown arg $1";; esac; done
 [ "$N_JAILED" -lt 0 ] && N_JAILED=$(( N / 2 ))
 [ -x "$FC" ] || die "run lab/fetch.sh first"
+"$LAB/check-kvm.sh" >/dev/null || die "no usable /dev/kvm; run lab/check-kvm.sh for details"
 mkdir -p "$RUN"
 # jailer puts each vm in /sys/fs/cgroup/firecracker/<id>; controllers must be delegated down to it.
 if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
