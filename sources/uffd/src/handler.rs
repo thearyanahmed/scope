@@ -98,15 +98,7 @@ impl Handler {
         // under us we can still SIGBUS, which is why the operator owns the snapshot files.
         let mem = unsafe { memmap2::MmapOptions::new().map(mem) }?;
         let page = maps[0].page_size;
-        Ok(Self {
-            uffd,
-            maps,
-            mem,
-            page,
-            removed: Ranges::default(),
-            t0: Instant::now(),
-            summary: Summary::default(),
-        })
+        Ok(Self { uffd, maps, mem, page, removed: Ranges::default(), t0: Instant::now(), summary: Summary::default() })
     }
 
     pub fn header(&self) -> Header {
