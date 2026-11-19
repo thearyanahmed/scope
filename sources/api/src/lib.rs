@@ -13,10 +13,7 @@ use std::os::unix::net::UnixStream;
 use std::path::Path;
 use std::sync::mpsc::Sender;
 use std::time::{Duration, Instant};
-use telemetry::{
-    Event, Privilege, Sample, SampleData, Source, SourceError, StopToken, VmId, VmInfo, VmSet,
-    mono_ns,
-};
+use telemetry::{Event, Privilege, Sample, SampleData, Source, SourceError, StopToken, VmId, VmInfo, VmSet, mono_ns};
 
 pub const MAX_BODY: usize = 1 << 20;
 const TIMEOUT: Duration = Duration::from_secs(1);
@@ -180,7 +177,9 @@ mod tests {
     use std::os::unix::net::UnixListener;
 
     /// Minimal stand-in for firecracker's api server. Records request lines.
-    fn serve(routes: Vec<(&'static str, u16, &'static str)>) -> (tempfile::TempDir, std::path::PathBuf, std::thread::JoinHandle<Vec<String>>) {
+    fn serve(
+        routes: Vec<(&'static str, u16, &'static str)>,
+    ) -> (tempfile::TempDir, std::path::PathBuf, std::thread::JoinHandle<Vec<String>>) {
         let dir = tempfile::tempdir().unwrap();
         let sock = dir.path().join("api.sock");
         let l = UnixListener::bind(&sock).unwrap();
@@ -200,8 +199,14 @@ mod tests {
                     }
                 }
                 let path = line.split_whitespace().nth(1).unwrap().to_owned();
-                let (_, code, body) = routes.iter().find(|r| r.0 == path).copied().unwrap_or(("", 404, "{\"fault_message\":\"no\"}"));
-                write!(s, "HTTP/1.1 {code} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}", body.len()).unwrap();
+                let (_, code, body) =
+                    routes.iter().find(|r| r.0 == path).copied().unwrap_or(("", 404, "{\"fault_message\":\"no\"}"));
+                write!(
+                    s,
+                    "HTTP/1.1 {code} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}",
+                    body.len()
+                )
+                .unwrap();
                 seen.push(line.trim().to_owned());
             }
             seen
@@ -213,7 +218,11 @@ mod tests {
     fn info_from_vm_config() {
         let (_d, sock, h) = serve(vec![
             ("/", 200, r#"{"id":"vm1","state":"Running","vmm_version":"1.10.0","app_name":"Firecracker"}"#),
-            ("/vm/config", 200, r#"{"machine-config":{"vcpu_count":2,"mem_size_mib":1024,"smt":false},"drives":[{"drive_id":"rootfs"}],"network-interfaces":[{"iface_id":"eth0","host_dev_name":"tap0"}]}"#),
+            (
+                "/vm/config",
+                200,
+                r#"{"machine-config":{"vcpu_count":2,"mem_size_mib":1024,"smt":false},"drives":[{"drive_id":"rootfs"}],"network-interfaces":[{"iface_id":"eth0","host_dev_name":"tap0"}]}"#,
+            ),
         ]);
         let i = info(&sock).unwrap();
         assert_eq!(i.vmm_version.as_deref(), Some("1.10.0"));

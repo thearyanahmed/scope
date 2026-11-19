@@ -14,9 +14,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
-use telemetry::{
-    Event, KvmSample, Privilege, Sample, SampleData, Source, SourceError, StopToken, VmSet, mono_ns,
-};
+use telemetry::{Event, KvmSample, Privilege, Sample, SampleData, Source, SourceError, StopToken, VmSet, mono_ns};
 
 const DIR: &str = "sys/kernel/debug/kvm";
 

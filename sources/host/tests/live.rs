@@ -45,9 +45,14 @@ mod linux {
                 })
                 .unwrap();
         }
-        std::thread::Builder::new().name("fc_api".into()).spawn(|| loop {
-            std::thread::park();
-        }).unwrap();
+        std::thread::Builder::new()
+            .name("fc_api".into())
+            .spawn(|| {
+                loop {
+                    std::thread::park();
+                }
+            })
+            .unwrap();
         println!("ready tap={}", tap.is_some());
         std::thread::sleep(Duration::from_secs(30));
         drop(tap);

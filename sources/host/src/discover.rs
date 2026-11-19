@@ -6,8 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 use telemetry::{
-    Event, Privilege, Source, SourceError, StopToken, ThreadKind, Vcpu, Vm, VmEvent, VmId,
-    VmSet, VmmThread,
+    Event, Privilege, Source, SourceError, StopToken, ThreadKind, Vcpu, Vm, VmEvent, VmId, VmSet, VmmThread,
 };
 
 /// firecracker's default when `--api-sock` is absent (and `--no-api` is not given).
@@ -37,8 +36,8 @@ fn describe(root: &Root, pid: u32, btime: u64) -> Option<Vm> {
     let st = parse::stat(&root.read(format!("proc/{pid}/stat")).ok()?)?;
 
     let proc_root = root.path(format!("proc/{pid}/root"));
-    let jailed = std::fs::read_link(&proc_root).map(|t| t != Path::new("/")).unwrap_or(false)
-        || parent_is_jailer(root, st.ppid);
+    let jailed =
+        std::fs::read_link(&proc_root).map(|t| t != Path::new("/")).unwrap_or(false) || parent_is_jailer(root, st.ppid);
 
     let resolve = |p: &str| resolve(root, pid, p);
     let api_sock = if parse::has_flag(&args, "--no-api") {

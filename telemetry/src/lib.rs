@@ -26,12 +26,7 @@ use std::sync::mpsc::Sender;
 pub trait Source: Send {
     fn name(&self) -> &'static str;
     fn needs(&self) -> &'static [Privilege];
-    fn run(
-        self: Box<Self>,
-        vms: VmSet,
-        out: Sender<Event>,
-        stop: StopToken,
-    ) -> Result<(), SourceError>;
+    fn run(self: Box<Self>, vms: VmSet, out: Sender<Event>, stop: StopToken) -> Result<(), SourceError>;
 }
 
 #[derive(Debug)]

@@ -1,9 +1,7 @@
 use crate::thresholds::{Level, Thresholds, level};
 use serde::Serialize;
 use std::collections::{BTreeMap, VecDeque};
-use telemetry::{
-    Event, FcSample, HostSample, KvmSample, ProcSample, SampleData, Vm, VmEvent, VmId, VmInfo,
-};
+use telemetry::{Event, FcSample, HostSample, KvmSample, ProcSample, SampleData, Vm, VmEvent, VmId, VmInfo};
 
 /// 5 minutes at the default 1 s refresh.
 pub const HISTORY: usize = 300;

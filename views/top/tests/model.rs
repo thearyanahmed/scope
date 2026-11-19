@@ -35,7 +35,13 @@ fn proc(t: u64) -> ProcSample {
         threads: vec![],
         mem: Some(Mem { rss_bytes: 512 << 20, pss_bytes: 500 << 20 }),
         io: Some(ProcIo { read_bytes: t * 4096, write_bytes: t * 8192, ..Default::default() }),
-        net: vec![NetDev { name: "tap0".into(), rx_bytes: t * 100, tx_bytes: t * 1000, rx_dropped: t, ..Default::default() }],
+        net: vec![NetDev {
+            name: "tap0".into(),
+            rx_bytes: t * 100,
+            tx_bytes: t * 1000,
+            rx_dropped: t,
+            ..Default::default()
+        }],
         cgroup: Some(Cgroup {
             cpu: CgroupCpu { throttled_usec: t * 100_000, nr_throttled: t * 10, ..Default::default() },
             mem_current: Some(900),
@@ -85,7 +91,10 @@ fn rates_over_one_interval() {
     assert_eq!(r.new_oom_kills, Some(1));
 
     let names: Vec<_> = r.flags.iter().map(|(n, l)| (n.as_str(), *l)).collect();
-    assert_eq!(names, [("wait", Level::Crit), ("throttle", Level::Warn), ("mem", Level::Warn), ("oom_kill", Level::Crit)]);
+    assert_eq!(
+        names,
+        [("wait", Level::Crit), ("throttle", Level::Warn), ("mem", Level::Warn), ("oom_kill", Level::Crit)]
+    );
     assert_eq!(r.level, Level::Crit);
     assert_eq!(m.history(&VmId("vm1".into())).count(), 2);
 }
@@ -95,12 +104,27 @@ fn kvm_exits_and_header() {
     let mut m = Model::default();
     m.apply(&Event::Vm(VmEvent::Appeared(Box::new(vm()))));
     let kvm = |exits| {
-        SampleData::Kvm(KvmSample { vm: [("exits".to_owned(), exits), ("halt_exits".to_owned(), exits / 2)].into(), ..Default::default() })
+        SampleData::Kvm(KvmSample {
+            vm: [("exits".to_owned(), exits), ("halt_exits".to_owned(), exits / 2)].into(),
+            ..Default::default()
+        })
     };
     m.apply(&sample(1, kvm(1000)));
     m.apply(&sample(3, kvm(301_000)));
-    m.apply(&sample(3, SampleData::Info(VmInfo { vcpu_count: Some(2), mem_size_mib: Some(1024), ..Default::default() })));
-    let host = |t: u64, busy, idle| Event::Host(HostSample { ts_ns: t, ncpus: 4, busy_ns: busy, idle_ns: idle, mem_total_bytes: 4 << 30, mem_available_bytes: 1 << 30 });
+    m.apply(&sample(
+        3,
+        SampleData::Info(VmInfo { vcpu_count: Some(2), mem_size_mib: Some(1024), ..Default::default() }),
+    ));
+    let host = |t: u64, busy, idle| {
+        Event::Host(HostSample {
+            ts_ns: t,
+            ncpus: 4,
+            busy_ns: busy,
+            idle_ns: idle,
+            mem_total_bytes: 4 << 30,
+            mem_available_bytes: 1 << 30,
+        })
+    };
     m.apply(&host(1, 0, 0));
     m.apply(&host(2, 3 * S, S));
 

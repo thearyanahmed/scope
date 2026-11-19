@@ -14,10 +14,7 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::time::Duration;
-use telemetry::{
-    Event, FcSample, Privilege, Sample, SampleData, Source, SourceError, StopToken, VmId, VmSet,
-    mono_ns,
-};
+use telemetry::{Event, FcSample, Privilege, Sample, SampleData, Source, SourceError, StopToken, VmId, VmSet, mono_ns};
 
 pub const MAX_LINE: usize = 1 << 20;
 pub const MAX_KEYS: usize = 4096;
@@ -253,7 +250,8 @@ mod tests {
     fn bounded_input() {
         let mut a = Accumulator::default();
         assert!(a.push_line(&"x".repeat(MAX_LINE + 1)).is_err());
-        let wide: String = format!("{{{}}}", (0..MAX_KEYS + 10).map(|i| format!("\"k{i}\":1")).collect::<Vec<_>>().join(","));
+        let wide: String =
+            format!("{{{}}}", (0..MAX_KEYS + 10).map(|i| format!("\"k{i}\":1")).collect::<Vec<_>>().join(","));
         a.push_line(&wide).unwrap();
         assert_eq!(a.sample.counters.len(), MAX_KEYS);
     }

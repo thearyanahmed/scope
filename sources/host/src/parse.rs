@@ -31,7 +31,7 @@ pub fn stat(s: &str) -> Option<Stat> {
 
 pub fn schedstat(s: &str) -> Option<SchedStat> {
     let mut it = s.split_whitespace().map(|v| v.parse::<u64>().ok());
-    Some(SchedStat { run_ns: it.next()??, wait_ns: it.next()??, timeslices: it.next()??})
+    Some(SchedStat { run_ns: it.next()??, wait_ns: it.next()??, timeslices: it.next()?? })
 }
 
 pub fn cmdline(raw: &[u8]) -> Vec<String> {
@@ -249,13 +249,16 @@ mod tests {
 
     #[test]
     fn io_stat_sums_devices() {
-        let io = io_stat("8:0 rbytes=10 wbytes=20 rios=1 wios=2 dbytes=0 dios=0\n259:0 rbytes=5 wbytes=5 rios=1 wios=1\n");
+        let io =
+            io_stat("8:0 rbytes=10 wbytes=20 rios=1 wios=2 dbytes=0 dios=0\n259:0 rbytes=5 wbytes=5 rios=1 wios=1\n");
         assert_eq!(io, CgroupIo { rbytes: 15, wbytes: 25, rios: 2, wios: 3 });
     }
 
     #[test]
     fn proc_stat_counts_cpus() {
-        let p = proc_stat("cpu  10 1 5 100 4 1 1 2 3 0\ncpu0 5 0 2 50 2 0 0 1 0 0\ncpu1 5 1 3 50 2 1 1 1 3 0\nintr 0\nbtime 1700000000\n");
+        let p = proc_stat(
+            "cpu  10 1 5 100 4 1 1 2 3 0\ncpu0 5 0 2 50 2 0 0 1 0 0\ncpu1 5 1 3 50 2 1 1 1 3 0\nintr 0\nbtime 1700000000\n",
+        );
         assert_eq!(p, ProcStat { ncpus: 2, busy_ticks: 20, idle_ticks: 104, btime: 1700000000 });
     }
 }

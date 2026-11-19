@@ -236,8 +236,7 @@ impl App {
     }
 
     pub fn render(&self, f: &mut Frame) {
-        let [head, body, foot] =
-            Layout::vertical([
+        let [head, body, foot] = Layout::vertical([
             Constraint::Length(2 + self.notes.len() as u16),
             Constraint::Min(3),
             Constraint::Length(1),
@@ -294,24 +293,20 @@ impl App {
             Cell::from(t)
         }))
         .style(Style::default().add_modifier(Modifier::BOLD | Modifier::REVERSED));
-        let body = rows.iter().map(|r| {
-            TRow::new(Col::ALL.iter().map(|c| Cell::from(c.cell(r)))).style(level_style(r.level))
-        });
+        let body =
+            rows.iter().map(|r| TRow::new(Col::ALL.iter().map(|c| Cell::from(c.cell(r)))).style(level_style(r.level)));
         let t = Table::new(body, Col::ALL.iter().map(|c| Constraint::Length(c.width())))
             .header(head)
             .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED));
-        let mut st = TableState::default().with_selected((!rows.is_empty()).then_some(self.selected.min(rows.len() - 1)));
+        let mut st =
+            TableState::default().with_selected((!rows.is_empty()).then_some(self.selected.min(rows.len() - 1)));
         f.render_stateful_widget(t, area, &mut st);
     }
 
     fn render_detail(&self, f: &mut Frame, area: Rect, id: &VmId, r: &Row) {
         let vcpu_h = r.vcpus.len().max(1) as u16 + 2;
-        let [top, sparks, info] = Layout::vertical([
-            Constraint::Length(vcpu_h),
-            Constraint::Length(6),
-            Constraint::Min(3),
-        ])
-        .areas(area);
+        let [top, sparks, info] =
+            Layout::vertical([Constraint::Length(vcpu_h), Constraint::Length(6), Constraint::Min(3)]).areas(area);
 
         let bar = |run: f64, wait: f64, w: usize| {
             // run fills with '█', wait with '░', rest idle.
@@ -329,13 +324,17 @@ impl App {
             .map(|v| {
                 let mut s = vec![Span::raw(format!("vcpu{:<3} ", v.index))];
                 s.extend(bar(v.run_pct, v.wait_pct, 40));
-                s.push(Span::raw(format!(" run {:5.1}%  wait {:5.1}%  guest {:5.1}%", v.run_pct, v.wait_pct, v.guest_pct)));
+                s.push(Span::raw(format!(
+                    " run {:5.1}%  wait {:5.1}%  guest {:5.1}%",
+                    v.run_pct, v.wait_pct, v.guest_pct
+                )));
                 Line::from(s)
             })
             .collect();
         let title = format!(" {} (pid {}{}) {} ", r.id, r.pid, if r.jailed { ", jailed" } else { "" }, flags_text(r));
         f.render_widget(
-            Paragraph::new(lines).block(Block::default().borders(Borders::ALL).title(title).border_style(level_style(r.level))),
+            Paragraph::new(lines)
+                .block(Block::default().borders(Borders::ALL).title(title).border_style(level_style(r.level))),
             top,
         );
 
@@ -352,7 +351,9 @@ impl App {
         );
         f.render_widget(
             Sparkline::default()
-                .block(Block::default().borders(Borders::ALL).title(format!(" max vcpu wait% {} ", pct(r.max_wait_pct))))
+                .block(
+                    Block::default().borders(Borders::ALL).title(format!(" max vcpu wait% {} ", pct(r.max_wait_pct))),
+                )
                 .style(Style::default().fg(Color::Red))
                 .data(tail(&wait_d, wait.width.saturating_sub(2))),
             wait,
@@ -362,7 +363,8 @@ impl App {
         if let Some(vm) = self.model.vm(id) {
             lines.push(format!("taps     {}", if vm.taps.is_empty() { "-".into() } else { vm.taps.join(", ") }));
             lines.push(format!("api      {}", vm.api_sock.as_ref().map_or("-".into(), |p| p.display().to_string())));
-            lines.push(format!("metrics  {}", vm.metrics_path.as_ref().map_or("-".into(), |p| p.display().to_string())));
+            lines
+                .push(format!("metrics  {}", vm.metrics_path.as_ref().map_or("-".into(), |p| p.display().to_string())));
             lines.push(format!("cgroup   {}", vm.cgroup.as_ref().map_or("-".into(), |p| p.display().to_string())));
         }
         lines.push(format!(

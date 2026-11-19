@@ -86,11 +86,16 @@ impl State {
                     o.push((vec![("vcpu", v.index.to_string())], secs(v.sched.run_ns)));
                 }
             }),
-            ("scope_vcpu_wait_seconds_total", "counter", "vcpu thread runnable but waiting for a cpu (schedstat)", |s, o| {
-                for v in s.proc.iter().flat_map(|p| &p.vcpus) {
-                    o.push((vec![("vcpu", v.index.to_string())], secs(v.sched.wait_ns)));
-                }
-            }),
+            (
+                "scope_vcpu_wait_seconds_total",
+                "counter",
+                "vcpu thread runnable but waiting for a cpu (schedstat)",
+                |s, o| {
+                    for v in s.proc.iter().flat_map(|p| &p.vcpus) {
+                        o.push((vec![("vcpu", v.index.to_string())], secs(v.sched.wait_ns)));
+                    }
+                },
+            ),
             ("scope_vcpu_guest_seconds_total", "counter", "vcpu thread time in guest mode", |s, o| {
                 for v in s.proc.iter().flat_map(|p| &p.vcpus) {
                     o.push((vec![("vcpu", v.index.to_string())], secs(v.cpu.guest_ns)));
@@ -150,11 +155,16 @@ impl State {
                     o.push((vec![("stat", k.clone())], *v as f64));
                 }
             }),
-            ("scope_vm_firecracker_total", "counter", "firecracker metrics counters, summed since scope started", |s, o| {
-                for (k, v) in s.fc.iter().flat_map(|f| &f.counters) {
-                    o.push((vec![("metric", k.clone())], *v as f64));
-                }
-            }),
+            (
+                "scope_vm_firecracker_total",
+                "counter",
+                "firecracker metrics counters, summed since scope started",
+                |s, o| {
+                    for (k, v) in s.fc.iter().flat_map(|f| &f.counters) {
+                        o.push((vec![("metric", k.clone())], *v as f64));
+                    }
+                },
+            ),
             ("scope_vm_firecracker", "gauge", "firecracker metrics gauges, last value", |s, o| {
                 for (k, v) in s.fc.iter().flat_map(|f| &f.gauges) {
                     o.push((vec![("metric", k.clone())], *v as f64));
@@ -257,7 +267,12 @@ mod tests {
                 ts_ns: 0,
                 data: SampleData::Proc(ProcSample {
                     cpu: CpuTimes { user_ns: 2_500_000_000, system_ns: 0, guest_ns: 1_000_000_000 },
-                    vcpus: vec![VcpuTimes { index: 0, tid: 8, sched: SchedStat { wait_ns: 500_000_000, ..Default::default() }, ..Default::default() }],
+                    vcpus: vec![VcpuTimes {
+                        index: 0,
+                        tid: 8,
+                        sched: SchedStat { wait_ns: 500_000_000, ..Default::default() },
+                        ..Default::default()
+                    }],
                     ..Default::default()
                 }),
             },

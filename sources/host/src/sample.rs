@@ -5,8 +5,8 @@ use std::path::Path;
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 use telemetry::{
-    Cgroup, CpuTimes, Event, HostSample, NetDev, Privilege, ProcSample, Sample, SampleData,
-    Source, SourceError, StopToken, ThreadTimes, VcpuTimes, Vm, VmSet, mono_ns,
+    Cgroup, CpuTimes, Event, HostSample, NetDev, Privilege, ProcSample, Sample, SampleData, Source, SourceError,
+    StopToken, ThreadTimes, VcpuTimes, Vm, VmSet, mono_ns,
 };
 
 fn cpu(root: &Root, st: parse::Stat) -> CpuTimes {

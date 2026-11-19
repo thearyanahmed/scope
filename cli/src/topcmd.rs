@@ -76,7 +76,9 @@ pub fn run(root: Root, a: Args) -> anyhow::Result<()> {
             if kvm::available(&root) {
                 hub.spawn(Box::new(kvm::Kvm { root: root.clone(), interval: a.interval }));
             } else {
-                notes.push("kvm exit counters off: /sys/kernel/debug/kvm unreadable (needs root, debugfs mounted)".into());
+                notes.push(
+                    "kvm exit counters off: /sys/kernel/debug/kvm unreadable (needs root, debugfs mounted)".into(),
+                );
             }
         }
     }
@@ -102,7 +104,10 @@ pub fn run(root: Root, a: Args) -> anyhow::Result<()> {
         let addr = export::serve::parse_addr(addr).map_err(anyhow::Error::msg)?;
         let state = std::sync::Arc::new(std::sync::Mutex::new(export::State::default()));
         for vm in hub.vms.snapshot() {
-            state.lock().unwrap_or_else(|e| e.into_inner()).apply(&Event::Vm(telemetry::VmEvent::Appeared(Box::new(vm))));
+            state
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .apply(&Event::Vm(telemetry::VmEvent::Appeared(Box::new(vm))));
         }
         export::serve::spawn(addr, state.clone()).map_err(anyhow::Error::msg)?;
         eprintln!("scope: serving http://{addr}/metrics");

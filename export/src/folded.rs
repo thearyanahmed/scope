@@ -12,7 +12,10 @@ fn clean(f: &str) -> String {
 
 /// Merge samples into folded lines, sorted for stable output.
 /// `prefix` adds leading frames (e.g. thread name) per sample.
-pub fn fold<'a>(samples: impl IntoIterator<Item = &'a StackSample>, prefix: impl Fn(&StackSample) -> Vec<String>) -> Vec<String> {
+pub fn fold<'a>(
+    samples: impl IntoIterator<Item = &'a StackSample>,
+    prefix: impl Fn(&StackSample) -> Vec<String>,
+) -> Vec<String> {
     let mut acc: BTreeMap<String, u64> = BTreeMap::new();
     for s in samples {
         let frames: Vec<String> = prefix(s).iter().chain(&s.frames).map(|f| clean(f)).collect();
@@ -30,7 +33,13 @@ mod tests {
     use telemetry::StackKind;
 
     fn s(frames: &[&str], w: u64) -> StackSample {
-        StackSample { tid: 1, thread: "fc_vcpu 0".into(), kind: StackKind::Vmm, frames: frames.iter().map(|f| f.to_string()).collect(), weight: w }
+        StackSample {
+            tid: 1,
+            thread: "fc_vcpu 0".into(),
+            kind: StackKind::Vmm,
+            frames: frames.iter().map(|f| f.to_string()).collect(),
+            weight: w,
+        }
     }
 
     #[test]
