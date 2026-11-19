@@ -10,6 +10,7 @@ mod sample;
 mod stop;
 mod vm;
 mod vmset;
+pub mod trace;
 
 pub use event::*;
 pub use privilege::*;

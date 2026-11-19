@@ -38,7 +38,6 @@ fault = { path = "views/fault" }
 export = { path = "export" }
 
 anyhow = "1"
-thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 clap = { version = "4", features = ["derive"] }
