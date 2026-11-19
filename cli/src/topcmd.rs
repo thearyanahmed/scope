@@ -28,6 +28,10 @@ pub struct Args {
     /// when nothing else (an orchestrator) consumes them.
     #[arg(long)]
     own_metrics: bool,
+    /// Serve Prometheus metrics at ADDR/metrics instead of drawing the TUI.
+    /// `:9184` binds 127.0.0.1; use `0.0.0.0:9184` to expose it.
+    #[arg(long, value_name = "ADDR")]
+    serve: Option<String>,
     /// Don't query firecracker API sockets for vcpu count, memory size and devices.
     #[arg(long)]
     no_api: bool,
@@ -93,6 +97,23 @@ pub fn run(root: Root, a: Args) -> anyhow::Result<()> {
             r.write(&ev)?;
         }
         model.apply(&ev);
+    }
+    if let Some(addr) = &a.serve {
+        let addr = export::serve::parse_addr(addr).map_err(anyhow::Error::msg)?;
+        let state = std::sync::Arc::new(std::sync::Mutex::new(export::State::default()));
+        for vm in hub.vms.snapshot() {
+            state.lock().unwrap_or_else(|e| e.into_inner()).apply(&Event::Vm(telemetry::VmEvent::Appeared(Box::new(vm))));
+        }
+        export::serve::spawn(addr, state.clone()).map_err(anyhow::Error::msg)?;
+        eprintln!("scope: serving http://{addr}/metrics");
+        while let Ok(ev) = hub.rx.recv() {
+            if let Some(r) = rec.as_mut() {
+                r.write(&ev)?;
+            }
+            state.lock().unwrap_or_else(|e| e.into_inner()).apply(&ev);
+        }
+        hub.shutdown();
+        return Ok(());
     }
     if !a.json {
         let r = tui(model, notes, &hub, rec.as_mut(), live);

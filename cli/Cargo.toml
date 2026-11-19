@@ -18,6 +18,7 @@ host.workspace = true
 kvm.workspace = true
 metrics.workspace = true
 api.workspace = true
+export.workspace = true
 replay.workspace = true
 top.workspace = true
 anyhow.workspace = true
