@@ -1,11 +1,13 @@
 [package]
 name = "export"
+description = "prometheus text, json lines and folded stacks"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
 telemetry.workspace = true
+tiny_http.workspace = true
 
 [lints]
 workspace = true
