@@ -37,8 +37,8 @@ fn now_ms() -> u64 {
 }
 
 pub fn run(root: Root, a: Args) -> anyhow::Result<()> {
-    if !a.json {
-        bail!("the interactive TUI is not wired yet; use --json"); // todo: views/top ui
+    if a.once && !a.json {
+        bail!("--once needs --json");
     }
     let mut hub = Hub::new();
     let live = a.replay.is_none();
@@ -76,6 +76,11 @@ pub fn run(root: Root, a: Args) -> anyhow::Result<()> {
         }
         model.apply(&ev);
     }
+    if !a.json {
+        let r = tui(model, &hub, rec.as_mut(), live);
+        hub.shutdown();
+        return r;
+    }
     let mut ticks = 0;
     let out = std::io::stdout();
     // the sampler ends each tick with a Host event; render on that boundary.
@@ -102,4 +107,37 @@ pub fn run(root: Root, a: Args) -> anyhow::Result<()> {
     }
     hub.shutdown();
     Ok(())
+}
+
+fn tui(
+    model: Model,
+    hub: &Hub,
+    mut rec: Option<&mut replay::Recorder<std::io::BufWriter<std::fs::File>>>,
+    live: bool,
+) -> anyhow::Result<()> {
+    use crossterm::event::{self, Event as Term, KeyEventKind};
+    let mut app = top::ui::App::new(model);
+    // init() enters raw mode + alternate screen and installs a panic hook that restores them.
+    let mut term = ratatui::init();
+    let res = (|| -> anyhow::Result<()> {
+        loop {
+            while let Ok(ev) = hub.rx.try_recv() {
+                if let Some(r) = rec.as_deref_mut() {
+                    r.write(&ev)?;
+                }
+                app.model.apply(&ev);
+            }
+            app.now_ms = live.then(now_ms);
+            term.draw(|f| app.render(f))?;
+            if event::poll(Duration::from_millis(250))?
+                && let Term::Key(k) = event::read()?
+                && k.kind == KeyEventKind::Press
+                && app.key(k)
+            {
+                return Ok(());
+            }
+        }
+    })();
+    ratatui::restore();
+    res
 }
