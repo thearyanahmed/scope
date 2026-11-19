@@ -8,11 +8,11 @@ license.workspace = true
 [features]
 # needs nightly + bpf-linker at build time (see lab/docker/ebpf.Dockerfile),
 # or SCOPE_EBPF_OBJ pointing at a prebuilt object.
-ebpf = ["dep:aya", "dep:blazesym", "probe-abi/user"]
+ebpf = ["dep:aya", "dep:blazesym", "dep:probe-abi", "probe-abi/user"]
 
 [dependencies]
 telemetry.workspace = true
-probe-abi.workspace = true
+probe-abi = { workspace = true, optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 aya = { version = "0.16", optional = true }

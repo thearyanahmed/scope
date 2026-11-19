@@ -214,8 +214,7 @@ impl Handler {
             return Ok(false);
         }
         let start = Instant::now();
-        let msgs: Vec<Msg> =
-            buf[..n as usize].chunks_exact(sys::MSG_SIZE).filter_map(|c| c.try_into().ok().map(sys::decode)).collect();
+        let msgs: Vec<Msg> = buf[..n as usize].as_chunks::<{ sys::MSG_SIZE }>().0.iter().map(sys::decode).collect();
         // removes first: a fault in the same batch may target a just-removed page.
         for m in &msgs {
             if let Msg::Remove { start, end } | Msg::Unmap { start, end } = *m {
