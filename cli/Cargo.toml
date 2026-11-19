@@ -15,6 +15,7 @@ default = []
 [dependencies]
 telemetry.workspace = true
 host.workspace = true
+kvm.workspace = true
 replay.workspace = true
 top.workspace = true
 anyhow.workspace = true

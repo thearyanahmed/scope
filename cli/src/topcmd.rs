@@ -30,6 +30,7 @@ pub struct Args {
 struct Snapshot<'a> {
     header: Header,
     vms: &'a [Row],
+    notes: &'a [String],
 }
 
 fn now_ms() -> u64 {
@@ -41,6 +42,7 @@ pub fn run(root: Root, a: Args) -> anyhow::Result<()> {
         bail!("--once needs --json");
     }
     let mut hub = Hub::new();
+    let mut notes: Vec<String> = vec![];
     let live = a.replay.is_none();
     match &a.replay {
         Some(p) => {
@@ -56,6 +58,11 @@ pub fn run(root: Root, a: Args) -> anyhow::Result<()> {
             }
             hub.spawn(Box::new(host::Discovery::new(root.clone())));
             hub.spawn(Box::new(host::Sampler { root: root.clone(), interval: a.interval }));
+            if kvm::available(&root) {
+                hub.spawn(Box::new(kvm::Kvm { root: root.clone(), interval: a.interval }));
+            } else {
+                notes.push("kvm exit counters off: /sys/kernel/debug/kvm unreadable (needs root, debugfs mounted)".into());
+            }
         }
     }
     hub.seal();
@@ -77,7 +84,7 @@ pub fn run(root: Root, a: Args) -> anyhow::Result<()> {
         model.apply(&ev);
     }
     if !a.json {
-        let r = tui(model, &hub, rec.as_mut(), live);
+        let r = tui(model, notes, &hub, rec.as_mut(), live);
         hub.shutdown();
         return r;
     }
@@ -99,7 +106,7 @@ pub fn run(root: Root, a: Args) -> anyhow::Result<()> {
             continue;
         }
         let rows = model.rows(live.then(now_ms));
-        serde_json::to_writer(out.lock(), &Snapshot { header: model.header(), vms: &rows })?;
+        serde_json::to_writer(out.lock(), &Snapshot { header: model.header(), vms: &rows, notes: &notes })?;
         println!();
         if a.once {
             break;
@@ -111,12 +118,14 @@ pub fn run(root: Root, a: Args) -> anyhow::Result<()> {
 
 fn tui(
     model: Model,
+    notes: Vec<String>,
     hub: &Hub,
     mut rec: Option<&mut replay::Recorder<std::io::BufWriter<std::fs::File>>>,
     live: bool,
 ) -> anyhow::Result<()> {
     use crossterm::event::{self, Event as Term, KeyEventKind};
     let mut app = top::ui::App::new(model);
+    app.notes = notes;
     // init() enters raw mode + alternate screen and installs a panic hook that restores them.
     let mut term = ratatui::init();
     let res = (|| -> anyhow::Result<()> {

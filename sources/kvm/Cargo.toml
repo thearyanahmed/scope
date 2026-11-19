@@ -1,11 +1,13 @@
 [package]
 name = "kvm"
+description = "per-vm kvm counters from /sys/kernel/debug/kvm"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
 telemetry.workspace = true
+host.workspace = true
 
 [lints]
 workspace = true

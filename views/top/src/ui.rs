@@ -161,6 +161,8 @@ pub struct App {
     pub selected: usize,
     pub detail: Option<VmId>,
     pub now_ms: Option<u64>,
+    /// degraded sources and similar, shown under the header.
+    pub notes: Vec<String>,
 }
 
 impl App {
@@ -174,6 +176,7 @@ impl App {
             selected: 0,
             detail: None,
             now_ms: None,
+            notes: vec![],
         }
     }
 
@@ -234,7 +237,12 @@ impl App {
 
     pub fn render(&self, f: &mut Frame) {
         let [head, body, foot] =
-            Layout::vertical([Constraint::Length(2), Constraint::Min(3), Constraint::Length(1)]).areas(f.area());
+            Layout::vertical([
+            Constraint::Length(2 + self.notes.len() as u16),
+            Constraint::Min(3),
+            Constraint::Length(1),
+        ])
+        .areas(f.area());
         f.render_widget(self.header(), head);
         match self.detail.as_ref().and_then(|id| self.model.row(id, self.now_ms).map(|r| (id, r))) {
             Some((id, r)) => self.render_detail(f, body, id, &r),
@@ -271,7 +279,9 @@ impl App {
             ratio(h.mem_overcommit),
             bytes(h.host_mem_available),
         ));
-        Paragraph::new(vec![l1, l2])
+        let mut lines = vec![l1, l2];
+        lines.extend(self.notes.iter().map(|n| Line::styled(format!("note: {n}"), Style::default().fg(Color::Yellow))));
+        Paragraph::new(lines)
     }
 
     fn render_table(&self, f: &mut Frame, area: Rect) {

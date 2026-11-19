@@ -23,6 +23,10 @@ fn once_json_against_fixture() {
     assert_eq!(vms[1]["vcpus"].as_array().unwrap().len(), 2);
     // 512 MiB of 576 MiB memory.max
     assert_eq!(vms[1]["level"], "warn");
+    // the fixture has a kvm debugfs dir for vm-b only
+    assert_eq!(vms[1]["exits_per_s"], 0.0);
+    assert!(vms[0]["exits_per_s"].is_null());
+    assert!(v["notes"].as_array().unwrap().is_empty());
 }
 
 #[test]
