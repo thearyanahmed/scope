@@ -10,7 +10,10 @@ name = "scope"
 path = "src/main.rs"
 
 [features]
-default = []
+# ebpf: scope flame and fault record. needs nightly + bpf-linker on linux builds;
+# --no-default-features gives a stable-only build with top and fault serve/show.
+default = ["ebpf"]
+ebpf = ["dep:probes", "probes/ebpf", "dep:flame"]
 
 [dependencies]
 telemetry.workspace = true
@@ -20,8 +23,9 @@ metrics.workspace = true
 api.workspace = true
 export.workspace = true
 fault.workspace = true
-uffd.workspace = true
 libc.workspace = true
+probes = { workspace = true, optional = true }
+flame = { workspace = true, optional = true }
 replay.workspace = true
 top.workspace = true
 anyhow.workspace = true
@@ -34,6 +38,9 @@ crossterm.workspace = true
 [dev-dependencies]
 tempfile.workspace = true
 telemetry.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+uffd.workspace = true
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
 uffd.workspace = true

@@ -7,6 +7,19 @@ pub enum Cmd {
     /// Be firecracker's uffd handler for a snapshot restore and record every fault.
     /// This is the one scope command that affects a VM: if it stops, the guest stalls.
     Serve(ServeArgs),
+    /// Observe uffd faults of a VM whose handler is someone else (eBPF, read-only).
+    Record {
+        /// VM id, pid-<pid>, or pid.
+        vm: String,
+        #[arg(long)]
+        trace: PathBuf,
+        /// Stop after this long; default runs until ctrl-c.
+        #[arg(long, value_parser = crate::parse_duration)]
+        duration: Option<Duration>,
+        /// Guest page size (4096, or 2097152 for hugepage-backed memory).
+        #[arg(long, default_value_t = 4096)]
+        page_size: u32,
+    },
     /// Summary: fault count, working set size, resolve latency, stall.
     Show {
         trace: PathBuf,
@@ -75,9 +88,10 @@ fn open(p: &std::path::Path) -> anyhow::Result<fault::Mapped> {
     fault::Mapped::open(p).with_context(|| format!("open {}", p.display()))
 }
 
-pub fn run(c: Cmd) -> anyhow::Result<()> {
+pub fn run(root: host::Root, c: Cmd) -> anyhow::Result<()> {
     match c {
         Cmd::Serve(a) => serve(a),
+        Cmd::Record { vm, trace, duration, page_size } => record(&root, &vm, &trace, duration, page_size),
         Cmd::Show { trace, json } => {
             let m = open(&trace)?;
             let s = fault::stats(&m.trace().map_err(anyhow::Error::msg)?);
@@ -166,6 +180,44 @@ pub fn run(c: Cmd) -> anyhow::Result<()> {
             Ok(())
         }
     }
+}
+
+#[cfg(not(all(target_os = "linux", feature = "ebpf")))]
+fn record(_: &host::Root, _: &str, _: &std::path::Path, _: Option<Duration>, _: u32) -> anyhow::Result<()> {
+    bail!("fault record needs a linux build with the `ebpf` feature")
+}
+
+#[cfg(all(target_os = "linux", feature = "ebpf"))]
+fn record(
+    root: &host::Root,
+    sel: &str,
+    trace: &std::path::Path,
+    duration: Option<Duration>,
+    page_size: u32,
+) -> anyhow::Result<()> {
+    use telemetry::Privilege;
+    if !page_size.is_power_of_two() || page_size < 4096 {
+        bail!("--page-size must be a power of two >= 4096");
+    }
+    crate::vmsel::require(root, &[Privilege::CapBpf, Privilege::CapPerfmon])?;
+    let vm = crate::vmsel::find(root, sel)?;
+    let stop = telemetry::StopToken::new();
+    crate::on_interrupt(stop.clone());
+    let cap = probes::faults::record(&vm, page_size, duration, &stop, || {
+        eprintln!("scope: recording uffd faults of {} (pid {}), ctrl-c to stop", vm.id, vm.pid)
+    })
+    .map_err(anyhow::Error::msg)?;
+    for w in &cap.warnings {
+        eprintln!("scope: warning: {w}");
+    }
+    let Some(h) = cap.header else { bail!("no faults recorded") };
+    let mut w = telemetry::trace::Writer::new(std::io::BufWriter::new(std::fs::File::create(trace)?), &h)?;
+    for e in &cap.entries {
+        w.push(e)?;
+    }
+    w.flush()?;
+    eprintln!("scope: {} faults -> {}", cap.entries.len(), trace.display());
+    Ok(())
 }
 
 #[cfg(not(target_os = "linux"))]

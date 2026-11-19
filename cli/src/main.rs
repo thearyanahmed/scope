@@ -1,6 +1,10 @@
 mod faultcmd;
+mod flamecmd;
 mod hub;
 mod topcmd;
+// only the ebpf commands select a single vm so far.
+#[cfg_attr(not(all(target_os = "linux", feature = "ebpf")), allow(dead_code))]
+mod vmsel;
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
@@ -21,6 +25,8 @@ struct Cli {
 enum Cmd {
     /// What are the microVMs on this host doing right now?
     Top(topcmd::Args),
+    /// Why is this VM (or its VMM) slow? Records stacks, exits and a vCPU timeline.
+    Flame(flamecmd::Args),
     /// Which pages does a restored snapshot touch, in what order, how slowly?
     #[command(subcommand)]
     Fault(faultcmd::Cmd),
@@ -69,7 +75,8 @@ fn main() -> anyhow::Result<()> {
     let root = if cli.root == std::path::Path::new("/") { host::Root::live() } else { host::Root::at(&cli.root) };
     match cli.cmd {
         Cmd::Top(a) => topcmd::run(root, a),
-        Cmd::Fault(c) => faultcmd::run(c),
+        Cmd::Flame(a) => flamecmd::run(root, a),
+        Cmd::Fault(c) => faultcmd::run(root, c),
     }
 }
 
