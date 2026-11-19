@@ -1,11 +1,17 @@
 [package]
 name = "metrics"
+description = "firecracker metrics json (file tail, or a fifo scope owns)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
 telemetry.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+libc.workspace = true
 
 [lints]
 workspace = true
