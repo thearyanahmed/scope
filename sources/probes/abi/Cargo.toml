@@ -1,0 +1,18 @@
+[package]
+name = "probe-abi"
+description = "map layouts shared by scope's ebpf programs and their loader"
+version.workspace = true
+edition.workspace = true
+# linked into the kernel-side object too, so it must be gpl-compatible.
+license = "Apache-2.0 OR GPL-2.0-only"
+
+[features]
+# implements aya::Pod for userspace map access.
+user = ["dep:aya"]
+
+# aya is linux-only; on other hosts the feature is a no-op.
+[target.'cfg(target_os = "linux")'.dependencies]
+aya = { version = "0.16", optional = true, default-features = false }
+
+[lints]
+workspace = true

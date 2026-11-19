@@ -7,6 +7,7 @@ members = [
     "sources/metrics",
     "sources/api",
     "sources/probes",
+    "sources/probes/abi",
     "sources/uffd",
     "sources/replay",
     "views/top",
@@ -30,6 +31,7 @@ kvm = { path = "sources/kvm" }
 metrics = { path = "sources/metrics" }
 api = { path = "sources/api" }
 probes = { path = "sources/probes" }
+probe-abi = { path = "sources/probes/abi" }
 uffd = { path = "sources/uffd" }
 replay = { path = "sources/replay" }
 top = { path = "views/top" }

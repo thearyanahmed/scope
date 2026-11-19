@@ -1,0 +1,28 @@
+# kernel-side programs. built for bpfel-unknown-none with nightly + bpf-linker by
+# sources/probes/build.rs (aya-build). not a member of the main workspace.
+[workspace]
+
+[package]
+name = "scope-ebpf"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0 OR GPL-2.0-only"
+
+[dependencies]
+aya-ebpf = "0.3"
+probe-abi = { path = "../sources/probes/abi" }
+
+[build-dependencies]
+aya-build = "0.2"
+
+[[bin]]
+name = "scope-probes"
+path = "src/main.rs"
+
+[profile.release]
+debug = 2
+panic = "abort"
+codegen-units = 1
+
+[profile.dev]
+panic = "abort"
