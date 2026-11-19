@@ -1,11 +1,17 @@
 [package]
 name = "host"
+description = "firecracker discovery and /proc, cgroup v2, sysfs samplers"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
 telemetry.workspace = true
+serde_json.workspace = true
+libc.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true

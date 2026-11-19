@@ -1,0 +1,1 @@
+{"boot-source":{"kernel_image_path":"vmlinux"},"machine-config":{"vcpu_count":2,"mem_size_mib":512},"metrics":{"metrics_path":"/metrics.fifo"}}

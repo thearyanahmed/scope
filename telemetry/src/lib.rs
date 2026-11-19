@@ -53,3 +53,12 @@ impl std::fmt::Display for SourceError {
 }
 
 impl std::error::Error for SourceError {}
+
+/// Monotonic nanoseconds since the first call in this process.
+/// Every live source stamps samples with this so views can diff them.
+pub fn mono_ns() -> u64 {
+    use std::sync::OnceLock;
+    use std::time::Instant;
+    static START: OnceLock<Instant> = OnceLock::new();
+    START.get_or_init(Instant::now).elapsed().as_nanos() as u64
+}
