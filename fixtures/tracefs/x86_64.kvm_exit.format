@@ -1,0 +1,19 @@
+name: kvm_exit
+ID: 1754
+format:
+	field:unsigned short common_type;	offset:0;	size:2;	signed:0;
+	field:unsigned char common_flags;	offset:2;	size:1;	signed:0;
+	field:unsigned char common_preempt_count;	offset:3;	size:1;	signed:0;
+	field:int common_pid;	offset:4;	size:4;	signed:1;
+
+	field:unsigned int exit_reason;	offset:8;	size:4;	signed:0;
+	field:unsigned long guest_rip;	offset:16;	size:8;	signed:0;
+	field:u32 isa;	offset:24;	size:4;	signed:0;
+	field:u64 info1;	offset:32;	size:8;	signed:0;
+	field:u64 info2;	offset:40;	size:8;	signed:0;
+	field:u32 intr_info;	offset:48;	size:4;	signed:0;
+	field:u32 error_code;	offset:52;	size:4;	signed:0;
+	field:unsigned int vcpu_id;	offset:56;	size:4;	signed:0;
+	field:u64 requests;	offset:64;	size:8;	signed:0;
+
+print fmt: "vcpu %u reason %s%s%s rip 0x%lx info1 0x%016llx info2 0x%016llx intr_info 0x%08x error_code 0x%08x requests 0x%016llx", REC->vcpu_id, ...
