@@ -1,0 +1,64 @@
+[workspace]
+resolver = "3"
+members = [
+    "telemetry",
+    "sources/host",
+    "sources/kvm",
+    "sources/metrics",
+    "sources/api",
+    "sources/probes",
+    "sources/uffd",
+    "sources/replay",
+    "views/top",
+    "views/flame",
+    "views/fault",
+    "export",
+    "cli",
+]
+# kernel-side programs need nightly + bpf target; built separately.
+exclude = ["ebpf"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[workspace.dependencies]
+telemetry = { path = "telemetry" }
+host = { path = "sources/host" }
+kvm = { path = "sources/kvm" }
+metrics = { path = "sources/metrics" }
+api = { path = "sources/api" }
+probes = { path = "sources/probes" }
+uffd = { path = "sources/uffd" }
+replay = { path = "sources/replay" }
+top = { path = "views/top" }
+flame = { path = "views/flame" }
+fault = { path = "views/fault" }
+export = { path = "export" }
+
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }
+ratatui = "0.29"
+crossterm = "0.28"
+libc = "0.2"
+inferno = { version = "0.12", default-features = false }
+tiny_http = "0.12"
+tempfile = "3"
+memmap2 = "0.9"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+dbg_macro = "warn"
+todo = "warn"
+unwrap_used = "warn"
+
+[profile.release]
+debug = 1

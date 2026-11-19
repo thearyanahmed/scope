@@ -1,0 +1,15 @@
+[package]
+name = "telemetry"
+description = "shared types for scope: vms, samples, events. no i/o."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true
