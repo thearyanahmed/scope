@@ -117,6 +117,9 @@ pub fn run(root: Root, a: Args) -> anyhow::Result<()> {
             }
             state.lock().unwrap_or_else(|e| e.into_inner()).apply(&ev);
         }
+        for e in hub.errors() {
+            eprintln!("scope: {e}");
+        }
         hub.shutdown();
         return Ok(());
     }
@@ -143,7 +146,8 @@ pub fn run(root: Root, a: Args) -> anyhow::Result<()> {
             continue;
         }
         let rows = model.rows(live.then(now_ms));
-        serde_json::to_writer(out.lock(), &Snapshot { header: model.header(), vms: &rows, notes: &notes })?;
+        let all: Vec<String> = notes.iter().cloned().chain(hub.errors()).collect();
+        serde_json::to_writer(out.lock(), &Snapshot { header: model.header(), vms: &rows, notes: &all })?;
         println!();
         if a.once {
             break;
@@ -174,6 +178,11 @@ fn tui(
                 app.model.apply(&ev);
             }
             app.now_ms = live.then(now_ms);
+            for e in hub.errors() {
+                if !app.notes.contains(&e) {
+                    app.notes.push(e);
+                }
+            }
             term.draw(|f| app.render(f))?;
             if event::poll(Duration::from_millis(250))?
                 && let Term::Key(k) = event::read()?
