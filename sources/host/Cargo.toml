@@ -15,3 +15,8 @@ tempfile.workspace = true
 
 [lints]
 workspace = true
+
+# harness = false: the test binary doubles as a fake firecracker (see tests/live.rs).
+[[test]]
+name = "live"
+harness = false

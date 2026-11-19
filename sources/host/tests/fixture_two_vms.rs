@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 use host::{Root, discover, sample_host, sample_vm};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
