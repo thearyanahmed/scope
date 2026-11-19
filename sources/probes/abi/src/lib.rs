@@ -17,7 +17,11 @@ pub mod cfg {
     pub const GUEST: u32 = 5;
     /// byte offset of `address` in `struct vm_fault`.
     pub const VMF_ADDRESS_OFF: u32 = 6;
-    pub const LEN: u32 = 8;
+    /// st_dev / st_ino of scope's /proc/self/ns/pid. When set, programs report
+    /// pids in that namespace, matching what scope reads from /proc.
+    pub const NS_DEV: u32 = 7;
+    pub const NS_INO: u32 = 8;
+    pub const LEN: u32 = 10;
 }
 
 /// vCPU states for the timeline.
@@ -78,7 +82,8 @@ pub struct VcpuState {
 }
 
 impl VcpuState {
-    pub const NEW: Self = Self { state: state::UNKNOWN, saved: state::UNKNOWN, since_ns: 0, exit_ns: 0, exit_reason: 0, _pad: 0 };
+    pub const NEW: Self =
+        Self { state: state::UNKNOWN, saved: state::UNKNOWN, since_ns: 0, exit_ns: 0, exit_reason: 0, _pad: 0 };
 }
 
 /// `TIMELINE` value: ns per state, indexed by `state::*`.

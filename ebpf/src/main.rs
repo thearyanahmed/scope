@@ -5,8 +5,8 @@
 #![no_std]
 #![no_main]
 
-use aya_ebpf::bindings::BPF_F_USER_STACK;
-use aya_ebpf::helpers::{bpf_get_current_pid_tgid, bpf_ktime_get_ns};
+use aya_ebpf::bindings::{BPF_F_USER_STACK, bpf_pidns_info};
+use aya_ebpf::helpers::{bpf_get_current_pid_tgid, bpf_get_ns_current_pid_tgid, bpf_ktime_get_ns};
 use aya_ebpf::macros::{kprobe, kretprobe, map, perf_event, tracepoint};
 use aya_ebpf::maps::{Array, HashMap, RingBuf, StackTrace};
 use aya_ebpf::programs::tracing::StackIdContext;
@@ -23,6 +23,10 @@ static TGIDS: HashMap<u32, u8> = HashMap::with_max_entries(256, 0);
 /// vCPU tid -> state machine. Membership is the vCPU filter.
 #[map]
 static VCPU: HashMap<u32, VcpuState> = HashMap::with_max_entries(4096, 0);
+/// host-namespace tid -> scope-namespace tid, learned whenever a vCPU thread is current.
+/// sched_switch's next_pid is always a host pid, so it is translated through this.
+#[map]
+static GLOBAL_TID: HashMap<u32, u32> = HashMap::with_max_entries(4096, 0);
 #[map]
 static STACKS: StackTrace = StackTrace::with_max_entries(16384, 0);
 #[map]
@@ -46,10 +50,29 @@ fn conf(i: u32) -> u64 {
     CONFIG.get(i).copied().unwrap_or(u64::MAX)
 }
 
+/// (tgid, tid) of the current task, in scope's pid namespace when configured.
 #[inline(always)]
 fn ids() -> (u32, u32) {
+    let (dev, ino) = (conf(cfg::NS_DEV), conf(cfg::NS_INO));
+    if dev != u64::MAX && ino != u64::MAX {
+        let mut info = bpf_pidns_info { pid: 0, tgid: 0 };
+        // SAFETY: info is a valid out buffer of the size passed.
+        let rc = unsafe { bpf_get_ns_current_pid_tgid(dev, ino, &mut info, size_of::<bpf_pidns_info>() as u32) };
+        if rc == 0 {
+            return (info.tgid, info.pid);
+        }
+    }
     let v = bpf_get_current_pid_tgid();
     ((v >> 32) as u32, v as u32)
+}
+
+/// Remember host tid -> namespaced tid for the current (vCPU) thread.
+#[inline(always)]
+fn learn_global(tid: u32) {
+    let host = bpf_get_current_pid_tgid() as u32;
+    if host != tid {
+        let _ = GLOBAL_TID.insert(&host, &tid, 0);
+    }
 }
 
 #[inline(always)]
@@ -119,6 +142,7 @@ fn read_u32(ctx: &TracePointContext, slot: u32) -> u32 {
 pub fn kvm_exit(ctx: TracePointContext) -> u32 {
     let (_, tid) = ids();
     let Some(s) = VCPU.get_ptr_mut(&tid) else { return 0 };
+    learn_global(tid);
     let t = now();
     let reason = (read_u32(&ctx, cfg::EXIT_REASON_OFF) & 0xffff) | (read_u32(&ctx, cfg::EXIT_AUX_OFF) << 16);
     // SAFETY: valid map pointer, single writer per tid.
@@ -190,8 +214,12 @@ pub fn kvm_userspace_exit(_ctx: TracePointContext) -> u32 {
 #[tracepoint(category = "sched", name = "sched_switch")]
 pub fn sched_switch(ctx: TracePointContext) -> u32 {
     let t = now();
-    let prev = read_u32(&ctx, cfg::SWITCH_PREV_PID_OFF);
-    let next = read_u32(&ctx, cfg::SWITCH_NEXT_PID_OFF);
+    // prev is the current task, so its namespaced tid comes from the helper;
+    // next_pid is a host pid and goes through the learned mapping.
+    let (_, prev) = ids();
+    let next_host = read_u32(&ctx, cfg::SWITCH_NEXT_PID_OFF);
+    // SAFETY: map lookup.
+    let next = unsafe { GLOBAL_TID.get(&next_host) }.copied().unwrap_or(next_host);
     if let Some(s) = VCPU.get_ptr_mut(&prev) {
         // SAFETY: valid map pointer; this cpu is the only one touching prev right now.
         let s = unsafe { &mut *s };
