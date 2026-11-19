@@ -1,11 +1,19 @@
 [package]
 name = "top"
+description = "scope top: live per-vm table and detail view"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
 telemetry.workspace = true
+serde.workspace = true
+ratatui.workspace = true
+crossterm.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+replay.workspace = true
 
 [lints]
 workspace = true
