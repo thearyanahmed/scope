@@ -299,3 +299,55 @@ mod tests {
         assert_eq!(t.get(0), Some(entry(1)));
     }
 }
+
+/// Working-set files (`.ws`): pages in first-touch order, as memory-file offsets.
+///
+/// ```text
+/// # scope ws v1 page_size=4096
+/// 0x3000
+/// 0x0
+/// ```
+pub mod ws {
+    pub fn encode(page_size: u32, offsets: &[u64]) -> String {
+        let mut s = format!("# scope ws v1 page_size={page_size}\n");
+        for o in offsets {
+            s.push_str(&format!("{o:#x}\n"));
+        }
+        s
+    }
+
+    /// Returns (page_size, offsets). Bounded so a hostile file can't exhaust memory.
+    pub fn decode(s: &str) -> Result<(u32, Vec<u64>), String> {
+        const MAX: usize = 64 << 20;
+        let mut lines = s.lines();
+        let head = lines.next().ok_or("empty ws file")?;
+        let ps = head
+            .strip_prefix("# scope ws v1 page_size=")
+            .and_then(|v| v.trim().parse::<u32>().ok())
+            .ok_or_else(|| format!("bad ws header {head:?}"))?;
+        let mut out = vec![];
+        for (i, l) in lines.enumerate() {
+            let l = l.trim();
+            if l.is_empty() || l.starts_with('#') {
+                continue;
+            }
+            if out.len() >= MAX {
+                return Err("ws file too large".into());
+            }
+            let v = l.strip_prefix("0x").map_or_else(|| l.parse(), |h| u64::from_str_radix(h, 16));
+            out.push(v.map_err(|_| format!("line {}: bad offset {l:?}", i + 2))?);
+        }
+        Ok((ps, out))
+    }
+
+    #[cfg(test)]
+    mod tests {
+        #[test]
+        fn roundtrip() {
+            let s = super::encode(4096, &[0x3000, 0, 0x10_0000]);
+            assert_eq!(super::decode(&s).unwrap(), (4096, vec![0x3000, 0, 0x10_0000]));
+            assert!(super::decode("nope\n").is_err());
+            assert!(super::decode("# scope ws v1 page_size=4096\nzz\n").is_err());
+        }
+    }
+}
