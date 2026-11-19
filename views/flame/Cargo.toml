@@ -1,11 +1,18 @@
 [package]
 name = "flame"
+description = "scope flame: vmm flamegraph, exit profile, vcpu timeline"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
 telemetry.workspace = true
+export.workspace = true
+serde.workspace = true
+inferno.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
 
 [lints]
 workspace = true
