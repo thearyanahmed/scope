@@ -19,6 +19,9 @@ kvm.workspace = true
 metrics.workspace = true
 api.workspace = true
 export.workspace = true
+fault.workspace = true
+uffd.workspace = true
+libc.workspace = true
 replay.workspace = true
 top.workspace = true
 anyhow.workspace = true
@@ -30,6 +33,11 @@ crossterm.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+telemetry.workspace = true
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+uffd.workspace = true
+libc.workspace = true
 
 [lints]
 workspace = true

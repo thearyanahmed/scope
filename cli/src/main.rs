@@ -1,3 +1,4 @@
+mod faultcmd;
 mod hub;
 mod topcmd;
 
@@ -20,6 +21,9 @@ struct Cli {
 enum Cmd {
     /// What are the microVMs on this host doing right now?
     Top(topcmd::Args),
+    /// Which pages does a restored snapshot touch, in what order, how slowly?
+    #[command(subcommand)]
+    Fault(faultcmd::Cmd),
 }
 
 pub fn parse_duration(s: &str) -> Result<Duration, String> {
@@ -37,11 +41,35 @@ pub fn parse_duration(s: &str) -> Result<Duration, String> {
     Ok(Duration::from_secs_f64(secs))
 }
 
+/// Stop `token` on SIGINT/SIGTERM so long-running commands can flush their output.
+pub fn on_interrupt(token: telemetry::StopToken) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static HIT: AtomicBool = AtomicBool::new(false);
+    extern "C" fn handle(_: libc::c_int) {
+        // only async-signal-safe work here: one atomic store.
+        HIT.store(true, Ordering::SeqCst);
+    }
+    // SAFETY: handle is a valid extern "C" fn that only touches an atomic.
+    unsafe {
+        libc::signal(libc::SIGINT, handle as *const () as libc::sighandler_t);
+        libc::signal(libc::SIGTERM, handle as *const () as libc::sighandler_t);
+    }
+    std::thread::spawn(move || {
+        while !HIT.load(Ordering::SeqCst) {
+            if !token.sleep(std::time::Duration::from_millis(100)) {
+                return;
+            }
+        }
+        token.stop();
+    });
+}
+
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     let root = if cli.root == std::path::Path::new("/") { host::Root::live() } else { host::Root::at(&cli.root) };
     match cli.cmd {
         Cmd::Top(a) => topcmd::run(root, a),
+        Cmd::Fault(c) => faultcmd::run(c),
     }
 }
 
