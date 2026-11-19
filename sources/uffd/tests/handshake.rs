@@ -57,8 +57,8 @@ mod linux {
         let h = std::thread::spawn(move || {
             let (fd, maps, _conn) = accept(&listener).unwrap();
             let mem = std::fs::File::open(&mem_path).unwrap();
-            let mut handler = Handler::new(fd, maps, &mem, move |e: &Entry| seen2.lock().unwrap().push(*e)).unwrap();
-            handler.run(&stop2).unwrap();
+            let mut handler = Handler::new(fd, maps, &mem).unwrap();
+            handler.run(&stop2, &mut |e: &Entry| seen2.lock().unwrap().push(*e)).unwrap();
             handler.summary
         });
 

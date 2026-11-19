@@ -9,7 +9,7 @@ use std::io;
 use std::os::fd::{AsFd, AsRawFd, OwnedFd};
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::UnixListener;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use telemetry::trace::{Entry, Header, Region};
 use telemetry::{FaultRecord, StopToken, fault_flags};
@@ -64,7 +64,7 @@ pub fn accept(l: &UnixListener) -> io::Result<(OwnedFd, Vec<Mapping>, std::os::u
     Err(io::Error::new(io::ErrorKind::InvalidData, "peer sent no uffd"))
 }
 
-pub struct Handler<'a> {
+pub struct Handler {
     uffd: OwnedFd,
     maps: Vec<Mapping>,
     mem: memmap2::Mmap,
@@ -72,17 +72,19 @@ pub struct Handler<'a> {
     removed: Ranges,
     t0: Instant,
     pub summary: Summary,
-    on_fault: Box<dyn FnMut(&Entry) + 'a>,
 }
 
-impl std::fmt::Debug for Handler<'_> {
+impl std::fmt::Debug for Handler {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Handler").field("maps", &self.maps).field("summary", &self.summary).finish()
     }
 }
 
-impl<'a> Handler<'a> {
-    pub fn new(uffd: OwnedFd, maps: Vec<Mapping>, mem: &File, on_fault: impl FnMut(&Entry) + 'a) -> io::Result<Self> {
+/// Receives every resolved fault.
+pub type Sink<'a> = &'a mut dyn FnMut(&Entry);
+
+impl Handler {
+    pub fn new(uffd: OwnedFd, maps: Vec<Mapping>, mem: &File) -> io::Result<Self> {
         let need = maps.iter().map(|m| m.offset + m.size).max().unwrap_or(0);
         let have = mem.metadata()?.len();
         if have < need {
@@ -104,7 +106,6 @@ impl<'a> Handler<'a> {
             removed: Ranges::default(),
             t0: Instant::now(),
             summary: Summary::default(),
-            on_fault: Box::new(on_fault),
         })
     }
 
@@ -126,7 +127,7 @@ impl<'a> Handler<'a> {
     }
 
     /// Populate one page. Returns the flags to record, or None when it was already present.
-    fn populate(&mut self, page_addr: u64) -> io::Result<Option<(u64, u16)>> {
+    fn populate(&mut self, page_addr: u64, sink: Sink) -> io::Result<Option<(u64, u16)>> {
         let Some(m) = self.map_for(page_addr).copied() else {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -147,7 +148,9 @@ impl<'a> Handler<'a> {
                 CopyResult::Done => return Ok(Some((off, if zeroed { fault_flags::ZEROED } else { 0 }))),
                 CopyResult::Exists => return Ok(None),
                 // a remove/unmap is racing us; apply pending events, then retry.
-                CopyResult::Again => self.drain_events(None)?,
+                CopyResult::Again => {
+                    let _ = self.step(None, sink)?;
+                }
             }
         }
     }
@@ -162,7 +165,7 @@ impl<'a> Handler<'a> {
         sys::copy(self.uffd.as_fd(), page_addr, zeros.as_ptr(), self.page)
     }
 
-    fn record(&mut self, off: u64, start: Instant, tid: u32, flags: u16) {
+    fn record(&self, off: u64, start: Instant, tid: u32, flags: u16, sink: Sink) {
         let e = Entry {
             fault: FaultRecord {
                 ts_ns: start.duration_since(self.t0).as_nanos() as u64,
@@ -173,33 +176,27 @@ impl<'a> Handler<'a> {
             },
             tid,
         };
-        (self.on_fault)(&e);
+        sink(&e);
     }
 
     /// Eagerly populate file offsets (a `.ws` working set). Recorded with PREFETCHED.
-    pub fn prefetch(&mut self, offsets: &[u64]) -> io::Result<()> {
+    pub fn prefetch(&mut self, offsets: &[u64], sink: Sink) -> io::Result<()> {
         for &off in offsets {
             let Some(m) = self.maps.iter().find(|m| off >= m.offset && off - m.offset < m.size).copied() else {
                 continue;
             };
             let addr = m.base_host_virt_addr + (off - m.offset) / self.page * self.page;
             let start = Instant::now();
-            if let Some((off, flags)) = self.populate(addr)? {
+            if let Some((off, flags)) = self.populate(addr, sink)? {
                 self.summary.prefetched += 1;
-                self.record(off, start, 0, flags | fault_flags::PREFETCHED);
+                self.record(off, start, 0, flags | fault_flags::PREFETCHED, sink);
             }
         }
         Ok(())
     }
 
-    /// Handle whatever messages are already queued, without waiting.
-    fn drain_events(&mut self, wait: Option<Duration>) -> io::Result<()> {
-        let _ = self.step(wait)?;
-        Ok(())
-    }
-
     /// Poll up to `wait`, then handle one batch. Returns false once firecracker has gone away.
-    fn step(&mut self, wait: Option<Duration>) -> io::Result<bool> {
+    fn step(&mut self, wait: Option<Duration>, sink: Sink) -> io::Result<bool> {
         let mut pfd = libc::pollfd { fd: self.uffd.as_raw_fd(), events: libc::POLLIN, revents: 0 };
         let ms = wait.map_or(0, |d| d.as_millis().min(i32::MAX as u128) as i32);
         // SAFETY: one valid pollfd.
@@ -237,11 +234,11 @@ impl<'a> Handler<'a> {
         for m in msgs {
             if let Msg::PageFault { flags, address, ptid } = m {
                 let page_addr = address & !(self.page - 1);
-                if let Some((off, extra)) = self.populate(page_addr)? {
+                if let Some((off, extra)) = self.populate(page_addr, sink)? {
                     self.summary.faults += 1;
                     self.summary.bytes += self.page;
                     let w = if flags & sys::UFFD_PAGEFAULT_FLAG_WRITE != 0 { fault_flags::WRITE } else { 0 };
-                    self.record(off, start, ptid, w | extra);
+                    self.record(off, start, ptid, w | extra, sink);
                 }
             }
         }
@@ -249,9 +246,9 @@ impl<'a> Handler<'a> {
     }
 
     /// Serve until firecracker exits (uffd hangs up) or `stop` fires.
-    pub fn run(&mut self, stop: &StopToken) -> io::Result<()> {
+    pub fn run(&mut self, stop: &StopToken, sink: Sink) -> io::Result<()> {
         while !stop.is_stopped() {
-            match self.step(Some(Duration::from_millis(100))) {
+            match self.step(Some(Duration::from_millis(100)), sink) {
                 Ok(true) => {}
                 Ok(false) => break,
                 // ESRCH/ENOENT: the vm is exiting mid-copy.
@@ -261,12 +258,4 @@ impl<'a> Handler<'a> {
         }
         Ok(())
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct Config {
-    pub socket: PathBuf,
-    pub mem: PathBuf,
-    pub owner: Option<(u32, u32)>,
-    pub prefetch: Vec<u64>,
 }
