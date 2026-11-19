@@ -15,11 +15,14 @@ pub struct Model {
     host: (Option<HostSample>, Option<HostSample>),
 }
 
+/// previous and latest (timestamp, sample).
+type Pair<T> = (Option<(u64, T)>, Option<(u64, T)>);
+
 #[derive(Debug)]
 struct VmState {
     vm: Vm,
-    proc: (Option<(u64, ProcSample)>, Option<(u64, ProcSample)>),
-    kvm: (Option<(u64, KvmSample)>, Option<(u64, KvmSample)>),
+    proc: Pair<ProcSample>,
+    kvm: Pair<KvmSample>,
     fc: Option<FcSample>,
     info: Option<VmInfo>,
     history: VecDeque<Point>,
